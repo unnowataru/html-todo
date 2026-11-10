@@ -1,0 +1,23 @@
+{
+  "title": "サンプル ToDo",
+  "subtitle": "状態はブラウザに保存されます。<code>build-todo.py</code> で生成。",
+  "footer": "現況の正は実物。ここのチェックを根拠に判断しないこと。",
+  "owners": { "me": "私", "you": "あなた", "other": "他" },
+  "sections": [
+    {
+      "name": "1. 最優先",
+      "highlight": true,
+      "items": [
+        { "owner": "you", "title": "API トークンを発行する", "note": "他の作業の前提になる" },
+        { "owner": "me", "title": "証明書を適用する", "note": "トークン待ち" }
+      ]
+    },
+    {
+      "name": "2. 判断待ち",
+      "items": [
+        { "owner": "you", "title": "IP の払い出し範囲を決める" },
+        "担当を決めずに書くこともできる"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+# 生成物。仕様 JSON から作り直せるので追跡しない。
+# 進捗の台帳が二重になると、古い側が参照される。
+*.html
+!assets/template.html
+
+__pycache__/
+*.pyc

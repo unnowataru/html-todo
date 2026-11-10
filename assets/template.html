@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1a1a1a; --muted: #6b7280; --line: #e5e7eb;
+    --card: #f9fafb; --accent: #b45309; --done: #9ca3af;
+    --me: #1d4ed8; --you: #b45309; --other: #6b7280;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181d; --fg: #e6e6e6; --muted: #9aa0aa; --line: #2b2f37;
+      --card: #1d2027; --accent: #f59e0b; --done: #6b7280;
+      --me: #7aa2f7; --you: #f59e0b; --other: #9aa0aa;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 1.5rem 1.25rem 4rem;
+    background: var(--bg); color: var(--fg);
+    font-family: system-ui, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", Meiryo, sans-serif;
+    line-height: 1.6; font-size: 15px;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 1.35rem; margin: 0 0 .25rem; }
+  .sub { color: var(--muted); font-size: .85rem; margin-bottom: 1.25rem; }
+  .bar {
+    position: sticky; top: 0; z-index: 5; background: var(--bg);
+    padding: .6rem 0; border-bottom: 1px solid var(--line);
+    display: flex; gap: .75rem; align-items: center; flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+  }
+  .progress { flex: 1 1 220px; min-width: 200px; }
+  .track { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+  .fill { height: 100%; width: 0%; background: var(--accent); transition: width .2s; }
+  .count { font-variant-numeric: tabular-nums; font-size: .85rem; color: var(--muted); margin-top: .2rem; }
+  button {
+    font: inherit; font-size: .85rem; padding: .35rem .7rem; cursor: pointer;
+    background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 6px;
+  }
+  button:hover { border-color: var(--accent); }
+  h2 {
+    font-size: .95rem; margin: 1.75rem 0 .5rem; padding-bottom: .3rem;
+    border-bottom: 1px solid var(--line); font-weight: 600;
+  }
+  h2 .n { color: var(--muted); font-weight: 400; margin-left: .4rem; font-size: .8rem; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li {
+    display: flex; gap: .6rem; align-items: flex-start;
+    padding: .5rem .6rem; border-radius: 6px; border: 1px solid transparent;
+  }
+  li:hover { background: var(--card); }
+  li.hot { border-color: var(--accent); background: var(--card); }
+  input[type=checkbox] { margin-top: .35rem; width: 1rem; height: 1rem; flex: none; cursor: pointer; accent-color: var(--accent); }
+  .title { font-weight: 500; }
+  .note { color: var(--muted); font-size: .85rem; }
+  .detail { font-size: .85rem; white-space: pre-wrap; margin: .15rem 0 .25rem; color: var(--fg); }
+  li.done .title { color: var(--muted); font-weight: 400; }
+  li.done .note, li.done .detail { color: var(--done); }
+  .who {
+    flex: none; font-size: .7rem; padding: .1rem .45rem; border-radius: 99px;
+    border: 1px solid currentColor; margin-top: .3rem; white-space: nowrap;
+  }
+  .who.me { color: var(--me); } .who.you { color: var(--you); } .who.other { color: var(--other); }
+  .main { flex: 1; min-width: 0; }
+  .body { cursor: pointer; }
+  .cmt-btn {
+    flex: none; font-size: .7rem; padding: .1rem .45rem; margin-top: .3rem;
+    color: var(--muted); background: transparent; border-color: transparent;
+  }
+  li:hover .cmt-btn, .cmt-btn.has { border-color: var(--line); }
+  .cmt-btn.has { color: var(--accent); }
+  .cmt {
+    display: block; width: 100%; margin: .35rem 0 .1rem; padding: .35rem .5rem;
+    font: inherit; font-size: .85rem; line-height: 1.5; resize: vertical; min-height: 2.4em;
+    background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+    border-left: 3px solid var(--accent); border-radius: 4px;
+  }
+  .cmt:focus { outline: none; border-color: var(--accent); }
+  li.done .cmt { color: var(--fg); }
+  /* 判定用リストの YES / NO。選んだ側だけ塗る */
+  .dec { flex: none; display: flex; gap: .25rem; margin-top: .15rem; }
+  .dec button { font-size: .75rem; padding: .1rem .5rem; min-width: 2.8rem; }
+  .dec button[aria-pressed=true] { color: var(--bg); }
+  .dec button.yes[aria-pressed=true] { background: var(--accent); border-color: var(--accent); }
+  .dec button.no[aria-pressed=true] { background: var(--muted); border-color: var(--muted); }
+  .hidden { display: none !important; }
+  #warn {
+    border: 1px solid var(--accent); border-radius: 6px;
+    padding: .6rem .8rem; margin-bottom: 1rem; font-size: .85rem;
+  }
+  footer { margin-top: 2.5rem; color: var(--muted); font-size: .8rem; border-top: 1px solid var(--line); padding-top: .75rem; }
+  code { background: var(--card); padding: .1rem .3rem; border-radius: 4px; font-size: .85em; }
+  /* 印刷: 紙で使えるものだけ残す。操作部品と空のコメント欄は出さない。項目は途中で切らない */
+  @page { size: A4; margin: 12mm; }
+  @media print {
+    :root {
+      --bg: #ffffff; --fg: #000000; --muted: #444444; --line: #bbbbbb;
+      --card: #ffffff; --accent: #b45309; --done: #777777;
+    }
+    body { padding: 0; font-size: 10.5pt; }
+    .wrap { max-width: none; }
+    .bar, #warn, .cmt-btn, .cmt:placeholder-shown { display: none !important; }
+    li { break-inside: avoid; padding: .35rem .2rem; }
+    /* 背景色は既定では印刷されない。塗らないとどちらを選んだか紙で読めない */
+    .dec button { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    h2 { break-after: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>__TITLE__</h1>
+<div class="sub">__SUBTITLE__</div>
+
+<div class="bar">
+  <div class="progress">
+    <div class="track"><div class="fill" id="fill"></div></div>
+    <div class="count" id="count">—</div>
+  </div>
+  <button id="toggleDone">完了を隠す</button>
+  <button id="copyMd">Markdown でコピー</button>
+  <button id="reset">チェックを全解除</button>
+</div>
+
+<div id="warn" class="hidden"></div>
+<div id="list"></div>
+
+<footer>__FOOTER__</footer>
+
+</div>
+
+<!--
+  このリストの仕様。build-todo.py がここから読み直して作り直せる。
+  元の JSON を無くしてもよいのはこれがあるため。手で編集しないこと
+  (build-todo.py <このファイル> --extract で取り出して編集する)。
+-->
+<script type="application/json" id="todo-spec">__SPEC_JSON__</script>
+
+<script>
+"use strict";
+
+// 描画に要るものは埋め込んだ仕様から引く。同じ値を 2 か所に持たない。
+const SPEC = JSON.parse(document.getElementById("todo-spec").textContent);
+const TITLE = SPEC.title;
+const DATA = SPEC.sections;
+const WHO = SPEC.owners;
+const KEY = SPEC.storageKey;
+// 判定用のリスト。チェックの代わりに YES / NO を選ぶ。YES はチェックと同じ保存先を使う
+// (通常のリストから切り替えても、チェック済みがそのまま YES として残る)。NO だけ別に持つ。
+const DECISION = SPEC.decision === true;
+
+// このリストに実在する ID。保存された状態はここで濾す。
+// 濾さないと、消した項目の ID が localStorage と URL に溜まり続ける。
+const KNOWN = new Set(DATA.flatMap(sec => sec.items.map(it => it.id)));
+
+// ---------------------------------------------------------------- 状態の保存
+
+// 保存は 2 系統。localStorage が主で、使えない開き方のときだけ URL ハッシュが主になる。
+// ハッシュは常に書くので、URL を渡せば状態ごと渡せる。
+
+// 使えるかどうかは、読むだけでなく書いて消して確かめる。
+// プライベートモードや file:// の制限では、読めても書けないことがある。
+function probeStorage() {
+  try {
+    const probe = KEY + ":probe";
+    localStorage.setItem(probe, "1");
+    localStorage.removeItem(probe);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+let storageOK = probeStorage();
+
+function storageLoad() {
+  if (!storageOK) return null;
+  let raw;
+  try {
+    raw = localStorage.getItem(KEY);
+  } catch (e) {
+    storageOK = false;
+    return null;
+  }
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    // 壊れた保存データは「保存が使えない」ではない。捨てて、次の保存で直る。
+    return Array.isArray(parsed) ? parsed : Object.keys(parsed).filter(k => parsed[k]);
+  } catch (e) {
+    return null;
+  }
+}
+
+function storageSave(ids) {
+  if (!storageOK) return;
+  try {
+    localStorage.setItem(KEY, JSON.stringify(ids));
+  } catch (e) {
+    storageOK = false;
+  }
+}
+
+// NO と判定した ID。判定用リストのときだけ使う。無いときはキーごと消す
+// (判定用をやめたリストに NO が残り続けないようにするため)。
+const NO_KEY = KEY + ":no";
+
+function noLoad() {
+  if (!storageOK) return null;
+  try {
+    const raw = localStorage.getItem(NO_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter(x => typeof x === "string") : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function noSave(ids) {
+  if (!storageOK) return;
+  try {
+    if (ids.length) localStorage.setItem(NO_KEY, JSON.stringify(ids));
+    else localStorage.removeItem(NO_KEY);
+  } catch (e) {
+    storageOK = false;
+  }
+}
+
+// コメントは ID → 文字列。localStorage だけに置く (URL ハッシュには長すぎる)。
+const NOTES_KEY = KEY + ":notes";
+
+function notesLoad() {
+  if (!storageOK) return Object.create(null);
+  let raw;
+  try {
+    raw = localStorage.getItem(NOTES_KEY);
+  } catch (e) {
+    storageOK = false;
+    return Object.create(null);
+  }
+  if (!raw) return Object.create(null);
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return Object.create(null);
+    const out = Object.create(null); // 素の {} だと id "constructor" 等が継承値を拾う
+    for (const k of Object.keys(parsed)) {
+      // 今のリストに無い ID と空文字は捨てる。溜め続けない
+      if (KNOWN.has(k) && typeof parsed[k] === "string" && parsed[k].trim()) out[k] = parsed[k];
+    }
+    return out;
+  } catch (e) {
+    return Object.create(null);
+  }
+}
+
+function notesSave() {
+  if (!storageOK) return;
+  try {
+    if (Object.keys(notes).length) {
+      localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+    } else {
+      localStorage.removeItem(NOTES_KEY);
+    }
+  } catch (e) {
+    storageOK = false;
+    showWarn();
+  }
+}
+
+// 形は #done=a.b&no=c。no= は NO があるときだけ付ける (通常のリストは従来どおり)。
+// 前を [#&] で区切るのは、"no=" が "done=" の末尾に当たらないようにするため。
+function hashLoad() {
+  const d = location.hash.match(/[#&]done=([^&]*)/);
+  const n = location.hash.match(/[#&]no=([^&]*)/);
+  if (!d && !n) return null;
+  const split = m => m ? m[1].split(".").filter(Boolean) : [];
+  return { done: split(d), no: split(n) };
+}
+
+let hashOK = true;
+function hashSave(ids, noIds) {
+  const h = "#done=" + ids.join(".") + (noIds.length ? "&no=" + noIds.join(".") : "");
+  if (location.hash === h) return;
+  try {
+    history.replaceState(null, "", h);
+  } catch (e) {
+    // 出自が不透明な文書 (data: など) では URL を書き換えられない。
+    hashOK = false;
+  }
+}
+
+// 読み込みの優先順位:
+//   1. localStorage が使えて保存があれば、それが正。
+//      ハッシュを優先すると、古い URL を開いた瞬間に手元の新しい状態が消える。
+//   2. 使えない / 未保存なら、URL のハッシュから復元する。
+// どちらも、今このリストに無い ID は捨てる。
+// 判定用でないリストでは NO を読み捨てる (次の保存で消える)。
+// 同じ ID が YES と NO の両方にあれば YES を残す (手で書き換えた URL や 2 つのタブで起きうる)。
+let loadedDone, loadedNo;
+{
+  const sDone = storageLoad();
+  const sNo = noLoad();
+  if (sDone || sNo) {
+    loadedDone = sDone || [];
+    loadedNo = sNo || [];
+  } else {
+    const h = hashLoad();
+    loadedDone = h ? h.done : [];
+    loadedNo = h ? h.no : [];
+  }
+}
+const state = new Set(loadedDone.filter(id => KNOWN.has(id)));   // チェック済み = YES
+const noState = new Set(DECISION ? loadedNo.filter(id => KNOWN.has(id) && !state.has(id)) : []);
+const notes = notesLoad();
+
+function doneIds() {
+  return [...state].sort();
+}
+
+function persist() {
+  const ids = doneIds();
+  const noIds = [...noState].sort();
+  storageSave(ids);
+  noSave(noIds);
+  if (!storageOK) {
+    // 片方だけ書けた保存は、次に開いたとき URL より優先されて状態を戻してしまう。
+    // 両方消して、次回は URL のハッシュから復元させる。
+    try { localStorage.removeItem(KEY); localStorage.removeItem(NO_KEY); } catch (e) { /* 消せなければそのまま */ }
+  }
+  hashSave(ids, noIds);
+  showWarn();
+}
+
+function showWarn() {
+  const el = document.getElementById("warn");
+  let msg = "";
+  if (!storageOK && hashOK) {
+    msg = "この開き方ではブラウザ保存が使えません。チェックは URL のハッシュに保存しています "
+        + "(リロードでは残りますが、URL を捨てると消えます)。"
+        + "コメントは保存されません。書いたら「Markdown でコピー」で持ち出してください。";
+  } else if (!storageOK && !hashOK) {
+    msg = "この開き方では状態を保存できません。閉じるとチェックもコメントも消えます。"
+        + "ファイルとして保存し、Chrome で file:// として開いてください。";
+  }
+  el.textContent = msg;
+  el.classList.toggle("hidden", !msg);
+}
+
+// ---------------------------------------------------------------- 描画
+
+const list = document.getElementById("list");
+const counters = [];   // セクション見出しの「n / m」。名前ではなく順番で持つ
+
+function render() {
+  list.innerHTML = "";
+  counters.length = 0;
+
+  DATA.forEach((sec, si) => {
+    const h = document.createElement("h2");
+    h.textContent = sec.name;
+    const n = document.createElement("span");
+    n.className = "n";
+    h.appendChild(n);
+    // 同名セクションがあっても取り違えないよう、名前ではなく配列の位置で覚える
+    counters[si] = n;
+    list.appendChild(h);
+
+    const ul = document.createElement("ul");
+    for (const it of sec.items) {
+      ul.appendChild(renderItem(sec, it));
+    }
+    list.appendChild(ul);
+  });
+
+  applyFilter();
+  updateCounts();
+  showWarn();
+}
+
+function renderItem(sec, it) {
+  const li = document.createElement("li");
+  li.dataset.id = it.id;
+  if (sec.highlight) li.classList.add("hot");
+  // done = 済み。判定用リストでは YES と NO のどちらかを選んだこと
+  if (state.has(it.id) || noState.has(it.id)) li.classList.add("done");
+
+  // 左端の操作部品。通常はチェックボックス、判定用は YES / NO の 2 ボタン
+  let ctl, cb = null;
+  if (DECISION) {
+    ctl = document.createElement("div");
+    ctl.className = "dec";
+    ctl.setAttribute("role", "group");
+    ctl.setAttribute("aria-label", it.title + " の判定");
+    const yes = document.createElement("button");
+    const no = document.createElement("button");
+    const sync = () => {
+      yes.setAttribute("aria-pressed", String(state.has(it.id)));
+      no.setAttribute("aria-pressed", String(noState.has(it.id)));
+      li.classList.toggle("done", state.has(it.id) || noState.has(it.id));
+    };
+    // 選んだ側をもう一度押すと未判定に戻る。反対側を押すと切り替わる
+    const pick = (mine, other) => {
+      if (mine.has(it.id)) mine.delete(it.id);
+      else { mine.add(it.id); other.delete(it.id); }
+      persist();
+      sync();
+      updateCounts();
+      applyFilter();
+    };
+    for (const [b, label, cls, mine, other] of [[yes, "YES", "yes", state, noState], [no, "NO", "no", noState, state]]) {
+      b.type = "button";
+      b.className = cls;
+      b.textContent = label;
+      b.addEventListener("click", () => pick(mine, other));
+      ctl.appendChild(b);
+    }
+    sync();
+  } else {
+    cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.id = "cb-" + it.id;
+    cb.checked = state.has(it.id);
+    cb.addEventListener("change", () => {
+      if (cb.checked) state.add(it.id); else state.delete(it.id);
+      persist();
+      li.classList.toggle("done", cb.checked);
+      // DOM は作り直さない (フォーカスと連続クリックを壊さないため)
+      updateCounts();
+      applyFilter();
+    });
+    ctl = cb;
+  }
+
+  // 担当は任意。未指定ならバッジ自体を出さない。
+  let who = null;
+  if (it.owner && WHO[it.owner]) {
+    who = document.createElement("span");
+    who.className = "who " + it.owner;
+    who.textContent = WHO[it.owner];
+  }
+
+  // label で包むと、支援技術に「何のチェックか」が伝わり、文字クリックでも切り替わる。
+  // 判定用は label にしない。題のクリックで YES / NO のどちらかに倒れると誤判定になる
+  const body = document.createElement(cb ? "label" : "div");
+  if (cb) {
+    body.className = "body";
+    body.htmlFor = cb.id;
+  }
+  const t = document.createElement("div");
+  t.className = "title";
+  t.textContent = it.title;
+  body.appendChild(t);
+  if (it.detail) {
+    // 本文は title の下、note (推奨・補足) の上。読む順に並べる
+    const dt = document.createElement("div");
+    dt.className = "detail";
+    dt.textContent = it.detail;
+    body.appendChild(dt);
+  }
+  if (it.note) {
+    const nt = document.createElement("div");
+    nt.className = "note";
+    nt.textContent = it.note;
+    body.appendChild(nt);
+  }
+
+  // コメント欄は label の外に置く。中に入れるとクリックでチェックが切り替わる。
+  const main = document.createElement("div");
+  main.className = "main";
+  main.appendChild(body);
+
+  const ta = document.createElement("textarea");
+  ta.className = "cmt hidden";
+  ta.rows = 2;
+  ta.placeholder = "コメント (判定の理由・条件・質問)";
+  ta.setAttribute("aria-label", it.title + " へのコメント");
+  ta.value = notes[it.id] || "";
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "cmt-btn";
+  const syncBtn = () => {
+    const has = !!(notes[it.id] && notes[it.id].trim());
+    btn.classList.toggle("has", has);
+    btn.textContent = has ? "コメント有" : "コメント";
+    btn.title = has ? "コメントを開閉する" : "コメントを書く";
+  };
+  syncBtn();
+  btn.addEventListener("click", () => {
+    const open = ta.classList.toggle("hidden");
+    if (!open) ta.focus();
+  });
+
+  // 入力のたびに保存する。blur を待つと、そのままタブを閉じたときに落ちる
+  ta.addEventListener("input", () => {
+    const v = ta.value;
+    if (v.trim()) notes[it.id] = v; else delete notes[it.id];
+    notesSave();
+    syncBtn();
+  });
+  // 空のまま離れたら畳む。書いたものは開いたままにして見えるようにする
+  ta.addEventListener("blur", () => {
+    if (!ta.value.trim()) ta.classList.add("hidden");
+  });
+  if (ta.value.trim()) ta.classList.remove("hidden");
+
+  main.appendChild(ta);
+
+  li.appendChild(ctl);
+  if (who) li.appendChild(who);
+  li.appendChild(main);
+  li.appendChild(btn);
+  return li;
+}
+
+let hideDone = false;
+
+function applyFilter() {
+  list.querySelectorAll("li").forEach(li => {
+    li.classList.toggle("hidden", hideDone && li.classList.contains("done"));
+  });
+}
+
+// 進捗は「済み」の数。判定用リストでは YES と NO の合計 (NO も判定を終えた項目)
+function updateCounts() {
+  let total = 0;
+  let done = 0;
+  let yesN = 0;
+  DATA.forEach((sec, si) => {
+    const d = sec.items.filter(it => state.has(it.id) || noState.has(it.id)).length;
+    yesN += sec.items.filter(it => state.has(it.id)).length;
+    if (counters[si]) counters[si].textContent = d + " / " + sec.items.length;
+    total += sec.items.length;
+    done += d;
+  });
+  document.getElementById("fill").style.width = (total ? (done / total * 100) : 0) + "%";
+  document.getElementById("count").textContent = DECISION
+    ? done + " / " + total + " 判定済み (YES " + yesN + "・NO " + (done - yesN) + ")"
+    : done + " / " + total + " 完了";
+}
+
+// ---------------------------------------------------------------- 操作
+
+const LABEL = DECISION
+  ? { hide: "判定済みを隠す", show: "判定済みを表示", reset: "判定を全解除",
+      confirm: "YES / NO の判定を全部外します (コメントは残ります)。よろしいですか。" }
+  : { hide: "完了を隠す", show: "完了を表示", reset: "チェックを全解除",
+      confirm: "チェックを全部外します (コメントは残ります)。よろしいですか。" };
+document.getElementById("toggleDone").textContent = LABEL.hide;
+document.getElementById("reset").textContent = LABEL.reset;
+
+document.getElementById("toggleDone").addEventListener("click", (e) => {
+  hideDone = !hideDone;
+  e.target.textContent = hideDone ? LABEL.show : LABEL.hide;
+  applyFilter();
+});
+
+document.getElementById("reset").addEventListener("click", () => {
+  if (!confirm(LABEL.confirm)) return;
+  state.clear();
+  noState.clear();
+  persist();
+  render();   // 全解除は件数が大きく変わるので作り直す
+});
+
+// Markdown へ落とすときは改行を潰す。1 項目 1 行が崩れると箇条書きにならない。
+function oneLine(s) {
+  return String(s).replace(/\s*[\r\n]+\s*/g, " ").trim();
+}
+
+function buildMarkdown() {
+  let md = "# " + oneLine(TITLE) + "\n";
+  for (const sec of DATA) {
+    md += "\n## " + oneLine(sec.name) + "\n\n";
+    for (const it of sec.items) {
+      // 判定用は結論を言葉で出す。[ ] だと NO と未判定の区別が付かない
+      const mark = DECISION
+        ? (state.has(it.id) ? "YES: " : noState.has(it.id) ? "NO: " : "未判定: ")
+        : "[" + (state.has(it.id) ? "x" : " ") + "] ";
+      md += "- " + mark
+          + (it.owner && WHO[it.owner] ? "(" + WHO[it.owner] + ") " : "")
+          + oneLine(it.title)
+          + (it.note ? " — " + oneLine(it.note) : "")
+          + "\n";
+      // コメントは項目の直下に引用で出す。改行は残す (理由・条件を複数行で書くため)
+      const c = notes[it.id];
+      if (c && c.trim()) {
+        for (const ln of c.replace(/\r\n?/g, "\n").trim().split("\n")) {
+          md += "  > " + ln + "\n";
+        }
+      }
+    }
+  }
+  return md;
+}
+
+document.getElementById("copyMd").addEventListener("click", async (e) => {
+  const md = buildMarkdown();
+  try {
+    await navigator.clipboard.writeText(md);
+    e.target.textContent = "コピーしました";
+  } catch (err) {
+    e.target.textContent = "コピー不可";
+  }
+  setTimeout(() => { e.target.textContent = "Markdown でコピー"; }, 1600);
+});
+
+render();
+// 消えた項目の ID を落としたときだけ書き戻す。
+// 無条件に書くと、まだ何もチェックしていない URL にハッシュが付く。
+if (loadedDone.length !== state.size || loadedNo.length !== noState.size) persist();
+</script>
+</body>
+</html>
